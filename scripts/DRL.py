@@ -1,47 +1,16 @@
-#!/usr/bin/env python
-# Software License Agreement (BSD License)
+# General DQN implemention for all systems of finite discrete inputs and bounded continuous outputs.
 #
-# Copyright (c) 2008, Willow Garage, Inc.
-# All rights reserved.
+# Berief mind:
+# In a certain Environment, there is an agent, which has Brain(to provide the agent hardware and software infrastructures
+#  to make a decision) and Memory(to remember all the action it has taken and the coresponding results)
+# Ref: https://jaromiru.com/2016/10/03/lets-make-a-dqn-implementation/
 #
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above
-#    copyright notice, this list of conditions and the following
-#    disclaimer in the documentation and/or other materials provided
-#    with the distribution.
-#  * Neither the name of Willow Garage, Inc. nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-# COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
-# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
-#
-# Revision $Id$
-
-## Simple talker demo that published std_msgs/Strings messages
-## to the 'chatter' topic
-
-import rospy
-from beginner_tutorials.msg import Num
+# author: bingbing li 06.29.2018
 
 from keras.models import Sequential
 from keras.layers import *
 from keras.optimizers import *
+
 import random, numpy, math, gym
 
 class Brain:
@@ -58,8 +27,8 @@ class Brain:
         model = Sequential()
 
         # 2) #2 Adaption!
-        model.add(Dense(64, activation='relu', input_dim=self.num_state))
-        model.add(Dense(self.num_action, activation='linear'))
+        model.add(Dense(64, activation='relu', input_dim=num_state))
+        model.add(Dense(num_action, activation='linear'))
 
         opt = RMSprop(lr=0.00025)
         model.compile(loss='mse', optimizer=opt)
@@ -203,35 +172,23 @@ class Environment:
         
         print("Running: Total reward:", R)
 
-def talker():
+# MAIN
+PROBLEM = 'CartPole-v0'
+env = Environment(PROBLEM)
 
-    ## + custom message:
-    pub_custom = rospy.Publisher('custom_chatter', Num)
-    rospy.init_node('custom_talker', anonymous=True)
-    r = rospy.Rate(100)  # 10Hz
-    msg = Num()
-    Num.num = 5
+num_state = env.env.observation_space.shape[0]
+num_action = env.env.action_space.n
 
-    # DRL:
-    PROBLEM = 'CartPole-v0'
-    env = Environment(PROBLEM)
-    num_state = env.env.observation_space.shape[0]
-    num_action = env.env.action_space.n
-    agent = Agent(num_state, num_action)
+agent = Agent(num_state, num_action)
 
-    while not rospy.is_shutdown():
-        
-        ## + custom message:
-        rospy.loginfo(msg)
-        pub_custom.publish(msg)
-
-        # DRL:
+try:
+    while True:
         env.run(agent)
+finally:
+    agent.brain.model.save("cartpole_libn.h5")
 
-        r.sleep()
 
-if __name__ == '__main__':
-    try:
-        talker()
-    except rospy.ROSInterruptException:
-        pass
+
+
+
+
