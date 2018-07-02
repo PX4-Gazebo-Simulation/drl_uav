@@ -208,9 +208,9 @@ def talker():
     ## + custom message:
     pub_custom = rospy.Publisher('custom_chatter', Num)
     rospy.init_node('custom_talker', anonymous=True)
-    r = rospy.Rate(100)  # 10Hz
+    r = rospy.Rate(100)  # 100Hz
     msg = Num()
-    Num.num = 5
+    msg.num = 5
 
     # DRL:
     PROBLEM = 'CartPole-v0'
