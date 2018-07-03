@@ -156,10 +156,12 @@ class Environment:
             self.env.render()
             action = agent.act(state)
             state_, r, done, info = self.env.step(action)
+            print('r = ',r)
 
             # 1) #1 Adaption!
             if done:
                 state_ = None
+                print('done!')
 
             agent.observe((state, action, r, state_))
             agent.replay()

@@ -1,48 +1,28 @@
 #!/usr/bin/env python
-# Software License Agreement (BSD License)
-#
-# Copyright (c) 2008, Willow Garage, Inc.
-# All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above
-#    copyright notice, this list of conditions and the following
-#    disclaimer in the documentation and/or other materials provided
-#    with the distribution.
-#  * Neither the name of Willow Garage, Inc. nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-# COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
-# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
-#
-# Revision $Id$
+# An implementation of UAV DRL
 
-## Simple talker demo that published std_msgs/Strings messages
-## to the 'chatter' topic
+# Func:
+# 1) kepp the pos1 fixed in 6+-0.3  D!
+#
+# Implementation:
+# 1) Work with player_test.py   D!
+#
+# Subscribe: game(Environment) status
+# Publish: action: only sent when game status is received
+#
+# author: bingbing li 07.02.2018
 
 import rospy
 from beginner_tutorials.msg import Num
+from beginner_tutorials.msg import Input_Game
+from beginner_tutorials.msg import Output_Game
 
 from keras.models import Sequential
 from keras.layers import *
 from keras.optimizers import *
 import random, numpy, math, gym
+
+import sys
 
 class Brain:
     def __init__(self, num_state, num_action, RL_GAMMA = 0.99):
@@ -50,6 +30,7 @@ class Brain:
         self.num_action = num_action
         self.model = self._createModel()
         # self.model.load_weights("cartpole_libn.h5")
+        self.model.load_weights("DRL_libn_13272.h5")
 
         # parameters for RL algorithm:
         self.GAMMA = RL_GAMMA
@@ -57,7 +38,6 @@ class Brain:
     def _createModel(self): # model: state -> v(state value)
         model = Sequential()
 
-        # 2) #2 Adaption!
         model.add(Dense(64, activation='relu', input_dim=self.num_state))
         model.add(Dense(self.num_action, activation='linear'))
 
@@ -111,7 +91,6 @@ class Agent:
         self.num_state = num_state
         self.num_action = num_action
 
-        # 3) #3 Adaption!
         # parameters of Internal DRL algorithm:
         ## Memory:
         self.MEMORY_CAPACITY = 100000
@@ -146,11 +125,15 @@ class Agent:
         # batch = self.memory.sample(self.memory.num_experience())  # the training data size is too big!
         len_batch = len(batch)
 
-        # 1) #1 Adaption!
         no_state = numpy.zeros(self.num_state)
 
         batch_states = numpy.array([o[0] for o in batch])
         batch_states_ = numpy.array([ (no_state if o[3] is None else o[3]) for o in batch])
+
+        # print('Batch states:')
+        # print(batch_states)
+        # print('Batch states_:')
+        # print(batch_states_)
         
         v = self.brain.predict(batch_states)
         v_ = self.brain.predict(batch_states_)
@@ -174,64 +157,146 @@ class Agent:
 
         self.brain.train(x, y, batch_size=len_batch)
 
-# 3) #3 Adaption!
-class Environment:
-    def __init__(self, problem):
-        self.problem = problem
-        self.env = gym.make(problem)
 
-    def run(self, agent):
-        state = self.env.reset()
-        R = 0
-        while True:
-            self.env.render()
-            action = agent.act(state)
-            state_, r, done, info = self.env.step(action)
+# Publisher:
+pub = rospy.Publisher('game_input', Input_Game, queue_size=10)
+env_input = Input_Game()
+env_input.action = 1    # initial action
 
-            # 1) #1 Adaption!
-            if done:
-                state_ = None
+current_status = Output_Game()
 
-            agent.observe((state, action, r, state_))
-            agent.replay()
+def status_update(data):
+    # Subscribing:
+    # rospy.loginfo(rospy.get_caller_id() + 'Receive Game Status: %f %f %f %f',
+    # data.vel1, data.vel2, data.pos1, data.pos2)
+    # rospy.loginfo('Receive Game Status: %f %f %f %f', data.vel1, data.vel2, data.pos1, data.pos2)
+    global current_status
+    current_status = data
+    # rospy.loginfo('Receive Game Status: %f %f %f %f', current_status.vel1, current_status.vel2, current_status.pos1, current_status.pos2)
+    # rospy.loginfo(rospy.get_caller_id() + 'I heard %d', data.num)
+    
 
-            state = state_
-            R += r
+   
+def interact():
+    # current_status.pos1:[2, 10] => failed = False
+    # current_status.pos:[5.7, 6.3] => done = True
+    global current_status
+    # 1) get pre_status = current_status
+    pre_status = current_status
+    # rospy.loginfo('pre_status.pos1 = %f', pre_status.pos1)
+    # 2) publish action
+    # rospy.loginfo('Publishing action: %f', env_input.action)
+    pub.publish(env_input)
+    # 3) judge from current_status: calculate: r, done, failed
+    # 4) return current_status, reward, done, failed(NOT Used!)
+    state_ = numpy.array(current_status.pos1)
+    if (current_status.pos1 > 10.0 or current_status.pos1 < 2.0):
+        done = True
+        return state_, -0.5, done, True
+    # reward = 10.0 / (numpy.square(current_status.pos1 - 6.0) + 1.0)
+    done = False
+    reward = 0.0
+    if (abs(current_status.pos1 - 6.0) < 0.3):
+        reward = 1.0
+    return state_, reward, done, False
 
-            if done:
-                break
-        
-        print("Running: Total reward:", R)
+def env_restore():
+    # 1) publish pos destination: [0,0,3]
+    # 2) judge if pos arrived?
+    # 3) hover for 1 second -> break!
+    # sleep for 1 seconds
+    rospy.sleep(1.)
 
-def talker():
+def main_loop():
 
-    ## + custom message:
-    pub_custom = rospy.Publisher('custom_chatter', Num)
+    global current_status, pub, env_input
+
     rospy.init_node('custom_talker', anonymous=True)
-    r = rospy.Rate(100)  # 100Hz
-    msg = Num()
-    msg.num = 5
 
-    # DRL:
-    PROBLEM = 'CartPole-v0'
-    env = Environment(PROBLEM)
-    num_state = env.env.observation_space.shape[0]
-    num_action = env.env.action_space.n
+    # 1) get current status:
+    # Subscriber:
+    rospy.Subscriber('game_status', Output_Game, status_update) 
+    # rospy.loginfo('current_status: %f %f %f %f', current_status.vel1, current_status.vel2, current_status.pos1, current_status.pos2)
+
+    # 2) take action
+    num_state = 1
+    num_action = 2  # action=[0,1]
     agent = Agent(num_state, num_action)
+    R = 0
+    n = 0
+    model_saved = 0
+    while True:
+        state = current_status.pos1
+        state = numpy.array(state)
+        # rospy.loginfo('current_status1111: %f %f %f %f', current_status.vel1, current_status.vel2, current_status.pos1, current_status.pos2)
 
-    while not rospy.is_shutdown():
-        
-        ## + custom message:
-        rospy.loginfo(msg)
-        pub_custom.publish(msg)
+        # # sleep for 10 seconds
+        # rospy.sleep(0.1)
+        # rospy.loginfo('current_status2222: %f %f %f %f', current_status.vel1, current_status.vel2, current_status.pos1, current_status.pos2)
+        n += 1
 
-        # DRL:
-        env.run(agent)
+        env_input.action = agent.act(state)
 
-        r.sleep()
+        # sleep for 10 seconds
+        # rospy.sleep(10.)
+
+
+        state_, reward, done, failed = interact()
+        if done:
+            state_ = None
+
+        try:
+            agent.observe((state, env_input.action, reward, state_))
+            agent.replay()
+        except KeyboardInterrupt:
+            print('Interrupted')
+            break
+            sys.exit(0)
+
+        # agent.observe((state, env_input.action, reward, state_))
+        # agent.replay()
+
+        R += reward
+        rospy.loginfo('n: %d current state: %f  current action: %f  current reward: %f Total reward: %f', n, state, env_input.action, reward, R)
+        # rospy.loginfo('current action: %f', env_input.action)
+        # rospy.loginfo('current reward: %f', reward)
+
+        # # display the result in star figure:
+        # state_scale = int(state*5.0)
+        # # rospy.loginfo('state = %f', state)
+        # for i in range(50):
+        #     if(i == state_scale):
+        #         print 'x',
+        #     else:
+        #         print '_',
+        # print('Total reward:', R)
+
+        if done:    # restart!
+            env_input.action = 200.0    # Restart the game!
+            pub.publish(env_input)
+            if (R > 300.0):
+                model_saved += 1
+                agent.brain.model.save("DRL_libn_"+str(int(R))+".h5")
+                # agent.brain.model.save("DRL_libn.h5")
+            R = 0.0
+
+  
+
+    print("Running: Total reward:", R)
+            
 
 if __name__ == '__main__':
     try:
-        talker()
+        main_loop()
     except rospy.ROSInterruptException:
         pass
+    except KeyboardInterrupt:
+        print 'Interrupted'
+        sys.exit(0)  
+
+# if __name__ == '__main__':
+#     try:
+#         main()
+#     except KeyboardInterrupt:
+#         print 'Interrupted'
+#         sys.exit(0)        
