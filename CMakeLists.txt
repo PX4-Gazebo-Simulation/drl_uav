@@ -54,6 +54,8 @@ find_package(catkin REQUIRED COMPONENTS
    Input_Game.msg
    Output_Game.msg
    Restart_Finished.msg
+   AttControlRunning.msg
+   Thrust.msg
  )
 
 ## Generate services in the 'srv' folder
@@ -167,6 +169,7 @@ include_directories(
    scripts/talker.py
    scripts/game_test.py
    scripts/player_test.py
+   scripts/msg_receive_test.py
    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
  )
 
