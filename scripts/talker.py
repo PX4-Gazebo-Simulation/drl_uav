@@ -22,6 +22,7 @@ from geometry_msgs.msg import PoseStamped	# UAV pos status
 from geometry_msgs.msg import TwistStamped	# UAV vel status
 from beginner_tutorials.msg import Restart_Finished # UAV restart finished
 from beginner_tutorials.msg import AttControlRunning    # UAV att_control running: ready for Memory::observe().
+from beginner_tutorials.msg import AttitudeTarget       # UAV att setpoint(thrust is used)
 
 from keras.models import Sequential
 from keras.layers import *
@@ -37,6 +38,8 @@ class Brain:
         self.model = self._createModel()
         # self.model.load_weights("cartpole_libn.h5")
         # self.model.load_weights("DRL_libn_13272.h5")
+        # self.model.load_weights("DRL_UAV_2326.h5")
+        self.model.load_weights("DRL_UAV_revised_303.h5")
 
         # parameters for RL algorithm:
         self.GAMMA = RL_GAMMA
@@ -45,6 +48,8 @@ class Brain:
         model = Sequential()
 
         model.add(Dense(64, activation='relu', input_dim=self.num_state))
+        model.add(Dense(128, activation='relu'))
+        model.add(Dense(64, activation='relu'))
         model.add(Dense(self.num_action, activation='linear'))
 
         opt = RMSprop(lr=0.00025)
@@ -114,6 +119,14 @@ class Agent:
         self.memory = Memory(self.MEMORY_CAPACITY)
 
     def act(self, state):   # action:[0,1,2,...,num_action-1]
+
+        # Limit: 3) forced input in Emergency: Vz is out of [-3,3].
+        global UAV_Vel
+        if(UAV_Vel.twist.linear.z > 3.0):
+            return 0
+        if(UAV_Vel.twist.linear.z < -3.0):
+            return 1
+
         if random.random() < self.epsilon:
             return random.randint(0, self.num_action-1)
         else:
@@ -167,6 +180,7 @@ class Agent:
 UAV_Vel = TwistStamped()
 UAV_Pos = PoseStamped()
 att_running = AttControlRunning()
+UAV_Att_Setpoint = AttitudeTarget()
 
 def UAV_pos_callback(data):
     global UAV_Pos  
@@ -182,15 +196,22 @@ def UAV_vel_callback(data):
 
 def restart_finished_callback(data):
     # Subscribing:
-    rospy.loginfo('UAV restart finished: %d', data.finished)
+    # rospy.loginfo('UAV restart finished: %d', data.finished)
+    pass
 
 
 def att_running_callback(data):
     global att_running
     # Subscribing:
-    rospy.loginfo('UAV att running!: %d', data.running)
+    # rospy.loginfo('UAV att running!: %d', data.running)
     att_running = data
-    rospy.loginfo('att_running!:  ~~~~~~~~~~~~~~~~~~~~~~ %d ~~~~~~~~~~~~~~~~~~~~', att_running.running)
+    # rospy.loginfo('att_running!:  ~~~~~~~~~~~~~~~~~~~~~~ %d ~~~~~~~~~~~~~~~~~~~~', att_running.running)
+
+def local_attitude_setpoint__callback(data):
+    global UAV_Att_Setpoint
+    # Subscribing:
+    # rospy.loginfo('thrust: %f', data.thrust)
+    UAV_Att_Setpoint = data
 
 # Publisher:
 pub = rospy.Publisher('game_input', Input_Game, queue_size=10)
@@ -240,19 +261,20 @@ def interact():
     global UAV_Vel, UAV_Pos
 
     # 1) publish action
-    rospy.loginfo('Publishing action: %f', env_input.action)
+    # rospy.loginfo('Publishing action: %f', env_input.action)
     pub.publish(env_input)
 
 
     # 2) judge from current_status: calculate: r, done, failed
     # 3) return current_status, reward, done, failed(NOT Used!)
-    state_ = numpy.array((UAV_Pos.pose.position.z, UAV_Vel.twist.linear.z))
-    if((UAV_Pos.pose.position.z > 30.0) or (UAV_Pos.pose.position.z < 8.0)): # allowed trial height:[8m,30m], release_height=restart_height=15m
+    state_ = numpy.array((UAV_Pos.pose.position.z, UAV_Vel.twist.linear.z, UAV_Att_Setpoint.thrust))
+    reward = 0.0
+    if((UAV_Pos.pose.position.z > 30.0) or (UAV_Pos.pose.position.z < 10.0)): # allowed trial height:[8m,30m], release_height=restart_height=15m
         done = True                                               # Restart the env:
-        return state_, -0.5, done, True
+        rospy.loginfo("Let's restart!")
+        return state_, reward, done, True
     # reward = 10.0 / (numpy.square(UAV_Pos.pose.position.z - 15.0) + 1.0)
     done = False
-    reward = 0.0
     if (math.fabs(UAV_Pos.pose.position.z - 15.0) < 0.3):
         reward = 1.0
     return state_, reward, done, False
@@ -274,7 +296,7 @@ def main_loop():
     global current_status, pub, env_input
 
     # get UAV status:
-    global UAV_Vel, UAV_Pos, att_running
+    global UAV_Vel, UAV_Pos, att_running, UAV_Att_Setpoint
 
     rospy.init_node('custom_talker', anonymous=True)
 
@@ -294,13 +316,18 @@ def main_loop():
     # Subscriber:
     rospy.Subscriber('att_running_msg', AttControlRunning, att_running_callback)
 
+    # Subscriber:
+    rospy.Subscriber('/mavros/setpoint_raw/attitude', AttitudeTarget, local_attitude_setpoint__callback)
+
     # 2) take action
-    num_state = 2   # state=[UAV_height, UAV_vertical_vel]
+    num_state = 3   # state=[UAV_height, UAV_vertical_vel, , UAV_Att_Setpoint.thrust]
     num_action = 2  # action=[0,1]
     agent = Agent(num_state, num_action)
     R = 0
     n = 0
     model_saved = 0
+    num_trial = 0   # the number of current trial
+    new_trial = False
     while True:
         # rospy.loginfo('UAV Vel Status: %f %f %f', UAV_Vel.twist.linear.x, UAV_Vel.twist.linear.y, UAV_Vel.twist.linear.z)  
         # rospy.loginfo('UAV Pos Status: %f %f %f', UAV_Pos.pose.position.x, UAV_Pos.pose.position.y, UAV_Pos.pose.position.z)
@@ -311,7 +338,7 @@ def main_loop():
             # while (not att_running.running):
             #     print("Not ready!")
             # state = current_status.pos1
-            state = numpy.array((UAV_Pos.pose.position.z, UAV_Vel.twist.linear.z))
+            state = numpy.array((UAV_Pos.pose.position.z, UAV_Vel.twist.linear.z, UAV_Att_Setpoint.thrust))
             # rospy.loginfo('current_status1111: %f %f %f %f', current_status.vel1, current_status.vel2, current_status.pos1, current_status.pos2)
 
             # # sleep for 10 seconds
@@ -341,7 +368,6 @@ def main_loop():
             # agent.replay()
 
             R += reward
-            rospy.loginfo('n: %d current state(Pos, Vel): %f, %f  current action: %f  current reward: %f Total reward: %f', n, state[0], state[1], env_input.action, reward, R)
             # rospy.loginfo('current action: %f', env_input.action)
             # rospy.loginfo('current reward: %f', reward)
 
@@ -358,13 +384,23 @@ def main_loop():
             if done:    # restart!
                 env_input.action = 200.0    # Restart the game!
                 pub.publish(env_input)
+                rospy.loginfo('Restarting!')
+                n = 0
                 # save model:
-                # if (R > 300.0):
-                #     model_saved += 1
-                #     agent.brain.model.save("DRL_libn_"+str(int(R))+".h5")
-                #     # agent.brain.model.save("DRL_libn.h5")
+                if (R > 300.0):
+                    model_saved += 1
+                    agent.brain.model.save("DRL_UAV_revised_"+str(int(R))+".h5")
+                    # agent.brain.model.save("DRL_libn.h5")
                 R = 0.0
+            
+            if((new_trial == True) and done):
+                num_trial += 1
+                new_trial = False
+            
+            rospy.loginfo('%d th trial: n: %d current state(Pos, Vel, thrust): %f, %f, %f  current action: %f  current reward: %f Total reward: %f', num_trial, n, state[0], state[1], state[2], env_input.action, reward, R)
+            
         else:
+            new_trial = True
             # publish random action to stop Env-restart commander!
             env_input.action =  random.randint(0, 1)    # Restart the game!
             # rospy.loginfo('Random action: %f', env_input.action)

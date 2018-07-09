@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   message_generation
+  geometry_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -55,7 +56,7 @@ find_package(catkin REQUIRED COMPONENTS
    Output_Game.msg
    Restart_Finished.msg
    AttControlRunning.msg
-   Thrust.msg
+   AttitudeTarget.msg
  )
 
 ## Generate services in the 'srv' folder
@@ -73,9 +74,10 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 # Generate added messages and services with any dependencies listed here
- generate_messages(
+generate_messages(
    DEPENDENCIES
    std_msgs
+   geometry_msgs
  )
 
 ################################################
