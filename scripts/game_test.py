@@ -7,9 +7,9 @@
 # author: bingbing li 07.01.2018
 
 import rospy
-from beginner_tutorials.msg import Input_Game
-from beginner_tutorials.msg import Output_Game
-# from beginner_tutorials.msg import Num
+from drl_uav.msg import Input_Game
+from drl_uav.msg import Output_Game
+# from drl_uav.msg import Num
 
 # Publisher:
 pub = rospy.Publisher('game_status', Output_Game, queue_size=10)

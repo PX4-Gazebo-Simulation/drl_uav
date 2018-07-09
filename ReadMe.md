@@ -60,7 +60,7 @@ rosrun mavros mavsys mode -c OFFBOARD
 ## 5) run DRL:
 ```
 source ~/src/DRL_node_ROS/devel/setup.bash
-rosrun beginner_tutorials talker.py
+rosrun drl_uav talker.py
 ```
 
 

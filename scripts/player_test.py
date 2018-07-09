@@ -7,11 +7,11 @@
 # author: bingbing li 07.01.2018
 
 import rospy
-from beginner_tutorials.msg import Input_Game
-from beginner_tutorials.msg import Output_Game
-from geometry_msgs.msg import PoseStamped	# UAV pos status
-from geometry_msgs.msg import TwistStamped	# UAV vel status
-from beginner_tutorials.msg import Restart_Finished # UAV restart finished
+from drl_uav.msg import Input_Game
+from drl_uav.msg import Output_Game
+from drl_uav.msg import PoseStamped	# UAV pos status
+from drl_uav.msg import TwistStamped	# UAV vel status
+from drl_uav.msg import Restart_Finished # UAV restart finished
 import random
 
 # Publisher:

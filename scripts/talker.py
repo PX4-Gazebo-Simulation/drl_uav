@@ -13,16 +13,16 @@
 # author: bingbing li 07.02.2018
 
 import rospy
-from beginner_tutorials.msg import Num
-from beginner_tutorials.msg import Input_Game
-from beginner_tutorials.msg import Output_Game
+from drl_uav.msg import Num
+from drl_uav.msg import Input_Game
+from drl_uav.msg import Output_Game
 
 # get UAV status:
 from geometry_msgs.msg import PoseStamped	# UAV pos status
 from geometry_msgs.msg import TwistStamped	# UAV vel status
-from beginner_tutorials.msg import Restart_Finished # UAV restart finished
-from beginner_tutorials.msg import AttControlRunning    # UAV att_control running: ready for Memory::observe().
-from beginner_tutorials.msg import AttitudeTarget       # UAV att setpoint(thrust is used)
+from drl_uav.msg import Restart_Finished # UAV restart finished
+from drl_uav.msg import AttControlRunning    # UAV att_control running: ready for Memory::observe().
+from drl_uav.msg import AttitudeTarget       # UAV att setpoint(thrust is used)
 
 from keras.models import Sequential
 from keras.layers import *
@@ -39,7 +39,7 @@ class Brain:
         # self.model.load_weights("cartpole_libn.h5")
         # self.model.load_weights("DRL_libn_13272.h5")
         # self.model.load_weights("DRL_UAV_2326.h5")
-        self.model.load_weights("DRL_UAV_revised_303.h5")
+        # self.model.load_weights("DRL_UAV_revised_303.h5")
 
         # parameters for RL algorithm:
         self.GAMMA = RL_GAMMA

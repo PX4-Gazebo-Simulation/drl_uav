@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 import rospy
-from beginner_tutorials.msg import AttControlRunning 
-from beginner_tutorials.msg import Restart_Finished 
-from beginner_tutorials.msg import AttitudeTarget
+from drl_uav.msg import AttControlRunning 
+from drl_uav.msg import Restart_Finished 
+from drl_uav.msg import AttitudeTarget
 
 att_running = AttControlRunning()
 def att_running_callback(data):
