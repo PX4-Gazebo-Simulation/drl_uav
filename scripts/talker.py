@@ -112,7 +112,7 @@ class Agent:
         ## Random selection proportion:
         self.MAX_EPSILON = 1
         self.MIN_EPSILON = 0.01
-        self.LAMBDA = 0.001  # speed of decay
+        self.LAMBDA = 0.0015  # speed of decay
 
         self.epsilon = self.MAX_EPSILON
         self.brain = Brain(num_state, num_action, RL_GAMMA=self.GAMMA)
@@ -163,8 +163,8 @@ class Agent:
 
         for i in range(len_batch):
             o = batch[i]
-            s = o[0]; a = o[1]; r = o[2]; s_ = o[3]
-            
+            s = o[0]; a = int(o[1]); r = o[2]; s_ = o[3]
+
             v_t = v[i]
             if s_ is None:
                 v_t[a] = r
@@ -267,17 +267,22 @@ def interact():
 
     # 2) judge from current_status: calculate: r, done, failed
     # 3) return current_status, reward, done, failed(NOT Used!)
-    state_ = numpy.array((UAV_Pos.pose.position.z, UAV_Vel.twist.linear.z, UAV_Att_Setpoint.thrust))
+    normalized_pos_z = (UAV_Pos.pose.position.z - 20.0) / 10.0      # UAV_Pos.pose.position.z: [10, 30]     -> normalized_pos_z: [][-1, 1]
+    normalized_vel_z = UAV_Vel.twist.linear.z / 3.0                 # UAV_Vel.twist.linear.z: [-3, 3]       -> normalized_vel_z: [-1, 1]
+    normalized_thrust = (UAV_Att_Setpoint.thrust - 0.59) / 0.19     # UAV_Att_Setpoint.thrust: [0.4, 0.78]  -> normalized_thrust: [-1, 1]
+    state_ = numpy.array((normalized_pos_z, normalized_vel_z, normalized_thrust))
+    
+    done = False
     reward = 0.0
+
     if((UAV_Pos.pose.position.z > 30.0) or (UAV_Pos.pose.position.z < 10.0)): # allowed trial height:[8m,30m], release_height=restart_height=15m
         done = True                                               # Restart the env:
         rospy.loginfo("Let's restart!")
-        return state_, reward, done, True
-    # reward = 10.0 / (numpy.square(UAV_Pos.pose.position.z - 15.0) + 1.0)
-    done = False
-    if (math.fabs(UAV_Pos.pose.position.z - 15.0) < 0.3):
+   
+    if (math.fabs(UAV_Pos.pose.position.z - 20.0) < 0.3):
         reward = 1.0
-    return state_, reward, done, False
+
+    return state_, reward, done, True
 
 
 
@@ -328,41 +333,49 @@ def main_loop():
     model_saved = 0
     num_trial = 0   # the number of current trial
     new_trial = False
-    while True:
+
+    r = rospy.Rate(20)  # 20Hz
+
+    # get states:
+    normalized_pos_z = (UAV_Pos.pose.position.z - 20.0) / 10.0      # UAV_Pos.pose.position.z: [10, 30]     -> normalized_pos_z: [][-1, 1]
+    normalized_vel_z = UAV_Vel.twist.linear.z / 3.0                 # UAV_Vel.twist.linear.z: [-3, 3]       -> normalized_vel_z: [-1, 1]
+    normalized_thrust = (UAV_Att_Setpoint.thrust - 0.59) / 0.19     # UAV_Att_Setpoint.thrust: [0.4, 0.78]  -> normalized_thrust: [-1, 1]
+    state = numpy.array((normalized_pos_z, normalized_vel_z, normalized_thrust))
+    # take action:
+    env_input.action = agent.act(state)
+
+    output_file_name = 'result_output.txt'  # record the training result
+
+
+    while not rospy.is_shutdown():
         # rospy.loginfo('UAV Vel Status: %f %f %f', UAV_Vel.twist.linear.x, UAV_Vel.twist.linear.y, UAV_Vel.twist.linear.z)  
         # rospy.loginfo('UAV Pos Status: %f %f %f', UAV_Pos.pose.position.x, UAV_Pos.pose.position.y, UAV_Pos.pose.position.z)
         # rospy.loginfo('main loop: att_running.running: %d', att_running.running)
 
         # print("att_running.running: %d", att_running.running)
         if(att_running.running):
-            # while (not att_running.running):
-            #     print("Not ready!")
-            # state = current_status.pos1
-            state = numpy.array((UAV_Pos.pose.position.z, UAV_Vel.twist.linear.z, UAV_Att_Setpoint.thrust))
-            # rospy.loginfo('current_status1111: %f %f %f %f', current_status.vel1, current_status.vel2, current_status.pos1, current_status.pos2)
-
-            # # sleep for 10 seconds
-            # rospy.sleep(0.1)
-            # rospy.loginfo('current_status2222: %f %f %f %f', current_status.vel1, current_status.vel2, current_status.pos1, current_status.pos2)
+            
             n += 1
-
-            env_input.action = agent.act(state)
-
-            # sleep for 10 seconds
-            # rospy.sleep(10.)
-
 
             state_, reward, done, failed = interact()
             if done:
                 state_ = None
+                # record the memory:
+                rospy.loginfo('Memory: state(Pos, Vel, thrust): %f, %f, %f  action: %f  reward: %f state_: %f, %f, %f', state[0], state[1], state[2], env_input.action, reward, 0.0, 0.0, 0.0)                                        
+            else:
+                # record the memory:
+                rospy.loginfo('Memory: state(Pos, Vel, thrust): %f, %f, %f  action: %f  reward: %f state_: %f, %f, %f', state[0], state[1], state[2], env_input.action, reward, state_[0], state_[1], state_[2])
 
-            try:
-                agent.observe((state, env_input.action, reward, state_))
-                agent.replay()
-            except KeyboardInterrupt:
-                print('Interrupted')
-                break
-                sys.exit(0)
+                # ignore final experience(state_ = None) for action = -1 then, and will lead to no value of v_[action] in RL.
+                try:
+                    agent.observe((state, env_input.action, reward, state_))
+                    agent.replay()                                
+                except KeyboardInterrupt:
+                    print('Interrupted')
+                    # break
+                    sys.exit(0)
+
+
 
             # agent.observe((state, env_input.action, reward, state_))
             # agent.replay()
@@ -381,33 +394,56 @@ def main_loop():
             #         print '_',
             # print('Total reward:', R)
 
-            if done:    # restart!
-                env_input.action = 200.0    # Restart the game!
+            # prepare for the next loop:
+            # get states:
+            normalized_pos_z = (UAV_Pos.pose.position.z - 20.0) / 10.0      # UAV_Pos.pose.position.z: [10, 30]     -> normalized_pos_z: [][-1, 1]
+            normalized_vel_z = UAV_Vel.twist.linear.z / 3.0                 # UAV_Vel.twist.linear.z: [-3, 3]       -> normalized_vel_z: [-1, 1]
+            normalized_thrust = (UAV_Att_Setpoint.thrust - 0.59) / 0.19     # UAV_Att_Setpoint.thrust: [0.4, 0.78]  -> normalized_thrust: [-1, 1]
+            state = numpy.array((normalized_pos_z, normalized_vel_z, normalized_thrust))
+            # take action:
+            env_input.action = agent.act(state)
+
+            if done:    # restart(these code may run several times because of the time delay)!
+                env_input.action = -1.0    # Restart the game!
                 pub.publish(env_input)
                 rospy.loginfo('Restarting!')
-                n = 0
+
+            
+            if((new_trial == True) and done):       # to make sure this loop runs only once!
+                num_trial += 1
+                new_trial = False
+
+                # record the trial result:  # stored in $HOME folder!
+                with open(output_file_name, 'a') as f:
+                    f.write(str(num_trial) + 'th trial: ' + ' Total reward: ' + str(R) + '\n')
+
+                rospy.sleep(0.1)
+
                 # save model:
                 if (R > 300.0):
                     model_saved += 1
                     agent.brain.model.save("DRL_UAV_revised_"+str(int(R))+".h5")
                     # agent.brain.model.save("DRL_libn.h5")
+                n = 0
                 R = 0.0
             
-            if((new_trial == True) and done):
-                num_trial += 1
-                new_trial = False
+            rospy.loginfo('%d th trial: n: %d current state(Pos, Vel, thrust): %f, %f, %f  current action: %f  current reward: %f Total reward: %f', num_trial, n, 
+                UAV_Pos.pose.position.z, UAV_Vel.twist.linear.z, UAV_Att_Setpoint.thrust, env_input.action, reward, R)
             
-            rospy.loginfo('%d th trial: n: %d current state(Pos, Vel, thrust): %f, %f, %f  current action: %f  current reward: %f Total reward: %f', num_trial, n, state[0], state[1], state[2], env_input.action, reward, R)
-            
-        else:
+        else:   # restarting!
             new_trial = True
-            # publish random action to stop Env-restart commander!
+            # publish random action(0/1) to stop Env-restart(-1) commander!
             env_input.action =  random.randint(0, 1)    # Restart the game!
             # rospy.loginfo('Random action: %f', env_input.action)
             pub.publish(env_input)
 
-  
+        r.sleep()
 
+        # sleep for 10 seconds
+        # rospy.sleep(10.)
+
+  
+    agent.brain.model.save("DRL_UAV_latest.h5")
     print("Running: Total reward:", R)
             
 
