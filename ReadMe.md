@@ -1,28 +1,3 @@
-- [Introduction](#Introduction)
-  * [Environment](#Environment)
-  * [DRL](#DRL)
-  * [Destination](#Destination)
-- [How to run UAV_DRL in Gazebo environment](#How-to-run-UAV_DRL-in-Gazebo-environment)
-  * [1. run pixhawk connection](#1.-run-pixhawk-connection)
-  * [2. run pixhawk&gazebo](#2.-run-pixhawk&gazebo)  
-  * [3. run state_machine: in branch flight_test](#3.-run-state_machine:-in-branch-flight_test)  
-  * [4. switch pixhawk to offboard mode](#4.-switch-pixhawk-to-offboard-mode)
-  * [5. run DRL](#5.-run-DRL)
-- [Constraints](#Constraints)
-  * [1. Gazebo environment](#1.-Gazebo-environment)
-  * [2. UAV_DRL](#2.-UAV_DRL)
-- [Others](#Others)
-  * [1. time delay of restart between pixhawk and DRL](#1.-time-delay-of-restart-between-pixhawk-and-DRL)
-
-``test``
-
-  * [Introduction](#Introduction)
-    * [Environment](#Environment)
-    * [DRL](#DRL)
-	* [Destination](#Destination)
-  * [How to run UAV_DRL in Gazebo environment](#How-to-run-UAV_DRL-in-Gazebo-environment)
-
-
 # Introduction
 Deep reinforcement learning for UAV in Gazebo simulation environment
 
