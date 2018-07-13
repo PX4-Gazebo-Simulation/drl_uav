@@ -54,8 +54,8 @@ mkdir -p mavros_ws/src
 cd mavros_ws
 catkin_init_workspace
 cd src
-git clone https://github.com/PX4-Gazebo-Simulation/mavros.git
-git clone https://github.com/PX4-Gazebo-Simulation/mavlink
+git clone -b uavcomp https://github.com/PX4-Gazebo-Simulation/mavros.git
+git clone -b uavcomp https://github.com/PX4-Gazebo-Simulation/mavlink
 cd ..
 catkin_make
 ```
@@ -65,7 +65,7 @@ mkdir -p attitude_controller/src
 cd attitude_controller
 catkin_init_workspace
 cd src
-git clone https://github.com/PX4-Gazebo-Simulation/state_machine.git
+git clone -b flight_test https://github.com/PX4-Gazebo-Simulation/state_machine.git
 cd ..
 catkin_make
 ```
@@ -88,7 +88,6 @@ source ~/src/mavros_ws/devel/setup.bash
 roslaunch mavros px4.launch fcu_url:="udp://:14540@127.0.0.1:14557"
 ```
 
-
 ## 2. run pixhawk&gazebo
 ```
 cd ~/src/Firmware
@@ -100,7 +99,6 @@ make posix_sitl_default gazebo
 source ~/src/attitude_controller/devel/setup.bash
 rosrun state_machine offb_simulation_test
 ```
-
 
 ## 4. switch pixhawk to offboard mode
 ```
@@ -114,9 +112,6 @@ rosrun mavros mavsys mode -c OFFBOARD
 source ~/src/DRL_node_ROS/devel/setup.bash
 rosrun drl_uav talker.py
 ```
-
-
-
 
 # Constraints
 ## 1. Gazebo environment
