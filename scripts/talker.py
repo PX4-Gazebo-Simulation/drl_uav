@@ -41,6 +41,7 @@ class Brain:
         # self.model.load_weights("DRL_UAV_2326.h5")
         # self.model.load_weights("DRL_UAV_revised_303.h5")
         # self.model.load_weights("DRL_UAV_latest_4_full_connection.h5")
+        # self.model.load_weights("DRL_UAV_latest.h5")
      
         # parameters for RL algorithm:
         self.GAMMA = RL_GAMMA

@@ -26,6 +26,59 @@ Gazebo & pixhawk & ROS SITL(software in the loop) simulation:
 ## Destination:
 UAV hovering at the altitude of 20m.
 
+# Requirements:
+
+[Pixhawk & Gazebo](https://dev.px4.io/en/setup/dev_env_linux_ubuntu.html#gazebo)
+
+[ROS](http://wiki.ros.org/kinetic/Installation/Ubuntu)
+
+[Tensorflow](https://www.tensorflow.org/install/install_linux)
+
+[keras](https://keras.io/#installation)
+
+# How to build the project
+```
+cd $HOME
+mkdir src
+```
+
+```
+cd ~/src
+git clone https://github.com/PX4-Gazebo-Simulation/Frimware.git
+cd Firmware
+make px4fmu-v4_default
+```
+```
+cd ~/src
+mkdir -p mavros_ws/src
+cd mavros_ws
+catkin_init_workspace
+cd src
+git clone https://github.com/PX4-Gazebo-Simulation/mavros.git
+git clone https://github.com/PX4-Gazebo-Simulation/mavlink
+cd ..
+catkin_make
+```
+```
+cd ~/src
+mkdir -p attitude_controller/src
+cd attitude_controller
+catkin_init_workspace
+cd src
+git clone https://github.com/PX4-Gazebo-Simulation/state_machine.git
+cd ..
+catkin_make
+```
+```
+cd ~/src
+mkdir -p DRL_node_ROS/src
+cd DRL_node_ROS
+catkin_init_workspace
+cd src
+git clone https://github.com/PX4-Gazebo-Simulation/drl_uav.git
+cd ..
+catkin_make
+```
 
 # How to run UAV_DRL in Gazebo environment
 (talker.py)
