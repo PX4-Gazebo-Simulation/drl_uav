@@ -1,7 +1,8 @@
 # Introduction
 Deep reinforcement learning for UAV in Gazebo simulation environment
 
-Youtube:
+
+**Youtube:**
 
 maunal control: https://www.youtube.com/watch?v=9zLjYLtHdPQ
 
