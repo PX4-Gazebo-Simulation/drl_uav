@@ -90,7 +90,7 @@ catkin_make
 
 # How to run UAV_DRL in Gazebo environment
 (talker.py)
-## 1. run pixhawk connection
+## 1. run pixhawk connection(MAVROS)
 ```
 source ~/src/mavros_ws/devel/setup.bash
 roslaunch mavros px4.launch fcu_url:="udp://:14540@127.0.0.1:14557"
