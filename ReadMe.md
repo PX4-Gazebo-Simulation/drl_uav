@@ -1,6 +1,11 @@
 # Introduction
 Deep reinforcement learning for UAV in Gazebo simulation environment
 
+Youtube:
+maunal control: https://www.youtube.com/watch?v=9zLjYLtHdPQ
+training: https://www.youtube.com/watch?v=zbejm5uHPt8
+
+
 ## Environment:
 Gazebo & pixhawk & ROS SITL(software in the loop) simulation:
 
