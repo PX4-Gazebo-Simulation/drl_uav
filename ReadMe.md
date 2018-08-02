@@ -36,7 +36,7 @@ UAV hovering at the altitude of 20m.
 
 # Requirements:
 
-[Pixhawk & Gazebo](https://dev.px4.io/en/setup/dev_env_linux_ubuntu.html#gazebo)
+[Pixhawk & Gazebo](https://dev.px4.io/en/setup/dev_env_linux.html#gazebo-with-ros)
 
 [ROS](http://wiki.ros.org/kinetic/Installation/Ubuntu)
 
