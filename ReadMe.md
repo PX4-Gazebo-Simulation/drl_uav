@@ -52,7 +52,7 @@ mkdir src
 
 ```
 cd ~/src
-git clone https://github.com/PX4-Gazebo-Simulation/Frimware.git
+git clone https://github.com/PX4-Gazebo-Simulation/Firmware.git
 cd Firmware
 make px4fmu-v4_default
 ```
@@ -65,7 +65,7 @@ cd src
 git clone -b uavcomp https://github.com/PX4-Gazebo-Simulation/mavros.git
 git clone -b uavcomp https://github.com/PX4-Gazebo-Simulation/mavlink
 cd ..
-catkin_make
+catkin build
 ```
 ```
 cd ~/src
@@ -75,7 +75,7 @@ catkin_init_workspace
 cd src
 git clone -b flight_test https://github.com/PX4-Gazebo-Simulation/state_machine.git
 cd ..
-catkin_make
+catkin build
 ```
 ```
 cd ~/src
@@ -85,7 +85,7 @@ catkin_init_workspace
 cd src
 git clone https://github.com/PX4-Gazebo-Simulation/drl_uav.git
 cd ..
-catkin_make
+catkin build
 ```
 
 # How to run UAV_DRL in Gazebo environment
